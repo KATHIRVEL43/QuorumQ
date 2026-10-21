@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum Secret Sharing (HBB) - Projector Edition</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-title">
+        <span class="brand-dot"></span>
+        <span>Quantum Secret Sharing (HBB)</span>
+      </div>
+      <span class="version-badge">Sim v2.4 (Aer)</span>
+    </div>
+
+    <div class="header-right">
+      <!-- Auto Play Switch -->
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); text-transform: uppercase;">Auto-Play</span>
+        <button class="eve-switch-btn" id="autoplay-switch" title="Toggle Auto-Play (1.5s steps)" type="button">
+          <span class="eve-switch-thumb"></span>
+        </button>
+      </div>
+
+      <!-- Prominent Eve Intercept Toggle (larger, top-right) -->
+      <div class="eve-toggle-wrap">
+        <label class="eve-toggle-label" for="eve-switch">Eve (Eavesdropper)</label>
+        <button class="eve-switch-btn" id="eve-switch" title="Toggle Eve Intercept-Resend Attack" type="button">
+          <span class="eve-switch-thumb"></span>
+        </button>
+      </div>
+
+      <!-- Dark / Light Theme Toggle (to the left of Reset link) -->
+      <button class="theme-toggle-btn" id="theme-toggle" title="Toggle Dark/Light Theme" type="button" aria-label="Toggle Theme">
+        <!-- Sun Icon (shown in dark theme) -->
+        <svg id="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <!-- Moon Icon (shown in light theme) -->
+        <svg id="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+
+      <!-- Reset link on the right side -->
+      <button class="header-btn" id="btn-header-reset" type="button">Reset</button>
+    </div>
+  </header>
+
+  <!-- Left Sticky Navigation Rail (01-09) -->
+  <aside class="nav-rail">
+    <button class="rail-item active" data-step="1" id="nav-01" type="button">01</button>
+    <button class="rail-item locked" data-step="2" id="nav-02" type="button">02</button>
+    <button class="rail-item locked" data-step="3" id="nav-03" type="button">03</button>
+    <button class="rail-item locked" data-step="4" id="nav-04" type="button">04</button>
+    <button class="rail-item locked" data-step="5" id="nav-05" type="button">05</button>
+    <button class="rail-item locked" data-step="6" id="nav-06" type="button">06</button>
+    <button class="rail-item locked" data-step="7" id="nav-07" type="button">07</button>
+    <button class="rail-item locked" data-step="8" id="nav-08" type="button">08</button>
+    <button class="rail-item locked" data-step="9" id="nav-09" type="button">09</button>
+  </aside>
+
+  <!-- Main Stage -->
+  <div class="stage-container">
+    <main class="stage-main">
+      <!-- Vertical Flow Guide Line -->
+      <div class="flow-line">
+        <div class="flow-core-indicator" id="flow-indicator"></div>
+      </div>
+
+      <!-- Telemetry Float (Right) -->
+      <div class="stage-telemetry">
+        <span class="telem-label">Protocol Stream</span>
+        <span class="telem-val">HBB-1999 (3-Party)</span>
+        <div class="telem-line"></div>
+        <div class="telem-status">
+          <span class="telem-dot" id="telem-dot"></span>
+          <span id="telem-coherence">COHERENCE 100%</span>
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="status-strip">
+        <div class="status-left">
+          <span class="status-tag">Protocol Sequence</span>
+          <span>State: <strong id="pipeline-status" style="color: var(--accent-green);">Verified</strong></span>
+        </div>
+        <div class="status-right">
+          <span>QBER: <strong id="header-qber" style="color: var(--accent-green);">0.0%</strong></span>
+          <span>|Ψ⟩: <strong style="color: var(--text-heading);">|GHZ₃⟩</strong></span>
+        </div>
+      </div>
+
+      <!-- ==================== STEP 01 ==================== -->
+      <section class="step-section step-active" data-step-id="1" id="step-01">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>01 INPUT STAGE</span>
+        </div>
+
+        <div class="card-box">
+          <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+            <div class="input-field-wrap">
+              <label class="field-label" for="secret-input">Secret Message Input</label>
+              <input class="secret-text-input" id="secret-input" maxlength="8" placeholder="ENTER SECRET" type="text" value="CAT123" />
+              <span class="input-hint">max 8 ASCII</span>
+            </div>
+            <button class="btn-primary" id="btn-encode" type="button">
+              <span>Enter Secret</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <div class="binary-grid-box">
+            <div class="binary-grid-header">
+              <span style="font-size: 13px; color: var(--text-label); text-transform: uppercase;">Plaintext Binary Bitstream (P) · Monospace Mapping</span>
+              <span style="font-size: 13px; color: var(--text-heading); font-weight: 700;" id="char-count-label">6 Chars · 48 Bits</span>
+            </div>
+            <div class="char-chip-list" id="ascii-stream-grid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow to Step 02 -->
+        <div class="flow-arrow-wrap">
+          <div class="flow-arrow-stem"></div>
+          <button class="flow-arrow-btn" data-next-step="2" id="arrow-01" type="button" title="Advance to Step 02">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 02 ==================== -->
+      <section class="step-section step-inactive step-locked" data-step-id="2" id="step-02">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>02 BASES SELECTION</span>
+        </div>
+
+        <div class="card-box">
+          <div class="parties-grid">
+            <!-- Alice -->
+            <div class="party-card">
+              <div class="party-name">Alice</div>
+              <div class="party-role">Dealer (Sender)</div>
+              <div class="party-icon-circle">≀</div>
+              <div class="basis-btn-group">
+                <button class="basis-btn active" data-actor="alice" data-basis="X" type="button">X</button>
+                <button class="basis-btn" data-actor="alice" data-basis="Y" type="button">Y</button>
+              </div>
+            </div>
+
+            <!-- Bob -->
+            <div class="party-card">
+              <div class="party-name">Bob</div>
+              <div class="party-role">Shareholder 1</div>
+              <div class="party-icon-circle">≀</div>
+              <div class="basis-btn-group">
+                <button class="basis-btn" data-actor="bob" data-basis="X" type="button">X</button>
+                <button class="basis-btn active" data-actor="bob" data-basis="Y" type="button">Y</button>
+              </div>
+            </div>
+
+            <!-- Charlie -->
+            <div class="party-card">
+              <div class="party-name">Charlie</div>
+              <div class="party-role">Shareholder 2</div>
+              <div class="party-icon-circle">≀</div>
+              <div class="basis-btn-group">
+                <button class="basis-btn" data-actor="charlie" data-basis="X" type="button">X</button>
+                <button class="basis-btn active" data-actor="charlie" data-basis="Y" type="button">Y</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px;">
+            <button class="btn-primary" id="btn-measure" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
+              <span>Measure Single Round</span>
+            </button>
+            <button class="btn-secondary" id="btn-random-bases" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+              <span>Auto-Generate Bases</span>
+            </button>
+            <button class="btn-ghost" id="btn-combine-scroll" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+              <span>Bob &amp; Charlie Combine</span>
+            </button>
+          </div>
+
+          <p style="font-family: var(--font-mono); font-size: 13px; color: var(--text-label); margin-top: 12px;">
+            Select quantum measurement bases (X or Y) for each participant. Valid GHZ eigenstates preserve quantum correlation parity.
+          </p>
+
+          <!-- Stats (Renamed: Rule held) -->
+          <div class="stats-row">
+            <div class="stat-item">
+              <span class="stat-title">Total Rounds</span>
+              <span class="stat-number" id="stat-rounds">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-title">Usable Sifted</span>
+              <span class="stat-number" id="stat-usable">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-title">Rule held</span>
+              <span class="stat-number" id="stat-rule">0</span>
+            </div>
+          </div>
+
+          <!-- Audit Trail -->
+          <div style="background: var(--bg-inner); border: 1px solid var(--border-default); border-radius: 12px; padding: 16px; margin-top: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 13px; color: var(--text-label); text-transform: uppercase;">
+              <span>GHZ Commutation Audit Trail</span>
+              <span>Accepted Eigen: <strong style="color: var(--text-heading);">XXX, XYY, YXY, YYX</strong></span>
+            </div>
+            <div class="audit-grid" id="rounds-log">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow to Step 03 -->
+        <div class="flow-arrow-wrap">
+          <div class="flow-arrow-stem"></div>
+          <button class="flow-arrow-btn" data-next-step="3" id="arrow-02" type="button" title="Advance to Step 03">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 03 ==================== -->
+      <section class="step-section step-inactive step-locked" data-step-id="3" id="step-03">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>03 FIRST BITS MEASUREMENT</span>
+        </div>
+
+        <div class="card-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--border-default); font-family: var(--font-mono);">
+            <div>
+              <span style="font-size: 13px; color: var(--text-label); text-transform: uppercase; display: block;">Immediate Single-Round Collapse</span>
+              <span style="font-size: 16px; color: var(--text-heading); font-weight: 600;">Tripartite Coin Collapse · Round #<span id="current-round-indicator">1</span></span>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <span class="version-badge" id="first-round-basis-tag">Basis Combination: XYY</span>
+              <span class="version-badge" id="round-validity-badge" style="color: var(--accent-green); border-color: var(--accent-green);">Rule held</span>
+            </div>
+          </div>
+
+          <!-- Single round outcome cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 18px;">
+            <div style="background: var(--bg-inner); border: 1px solid var(--border-default); border-radius: 12px; padding: 16px; text-align: center;">
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; color: var(--text-label); text-transform: uppercase; margin-bottom: 8px;">
+                <span>Alice (Dealer)</span>
+                <span style="font-weight: 700; color: var(--text-heading);" id="alice-round-basis">Basis X</span>
+              </div>
+              <div style="margin: 8px 0; width: 72px; height: 72px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-default); display: inline-flex; flex-direction: column; align-items: center; justify-content: center;">
+                <span style="font-family: var(--font-mono); font-size: 36px; font-weight: 700; color: var(--text-heading);" id="alice-first-bit">-</span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Outcome a₁</span>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); margin-top: 4px;">Bit 1 of Key A</div>
+            </div>
+
+            <div style="background: var(--bg-inner); border: 1px solid var(--border-default); border-radius: 12px; padding: 16px; text-align: center;">
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; color: var(--text-label); text-transform: uppercase; margin-bottom: 8px;">
+                <span>Bob (Share 1)</span>
+                <span style="font-weight: 700; color: var(--text-heading);" id="bob-round-basis">Basis Y</span>
+              </div>
+              <div style="margin: 8px 0; width: 72px; height: 72px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-default); display: inline-flex; flex-direction: column; align-items: center; justify-content: center;">
+                <span style="font-family: var(--font-mono); font-size: 36px; font-weight: 700; color: var(--text-heading);" id="bob-first-bit">-</span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Outcome b₁</span>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); margin-top: 4px;">Bit 1 of Share B</div>
+            </div>
+
+            <div style="background: var(--bg-inner); border: 1px solid var(--border-default); border-radius: 12px; padding: 16px; text-align: center;">
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; color: var(--text-label); text-transform: uppercase; margin-bottom: 8px;">
+                <span>Charlie (Share 2)</span>
+                <span style="font-weight: 700; color: var(--text-heading);" id="charlie-round-basis">Basis Y</span>
+              </div>
+              <div style="margin: 8px 0; width: 72px; height: 72px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--border-default); display: inline-flex; flex-direction: column; align-items: center; justify-content: center;">
+                <span style="font-family: var(--font-mono); font-size: 36px; font-weight: 700; color: var(--text-heading);" id="charlie-first-bit">-</span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Outcome c₁</span>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); margin-top: 4px;">Bit 1 of Share C</div>
+            </div>
+          </div>
+
+          <!-- Parity check formula -->
+          <div style="background: var(--bg-inner); border: 1px solid var(--border-default); border-radius: 12px; padding: 14px 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-family: var(--font-mono); font-size: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="color: var(--accent-purple4); font-size: 18px;">≀</span>
+              <span style="color: var(--text-label);">Quantum Correlation Parity Check:</span>
+              <span style="color: var(--text-heading); font-weight: 700; background: var(--surface-card); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-default);" id="parity-formula">a₁ ⊕ b₁ ⊕ c₁ = -</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: var(--text-secondary); text-transform: uppercase; font-size: 12px;">Sifting:</span>
+              <span class="badge-kept" id="parity-result">CORRELATED · KEPT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow to Step 04 -->
+        <div class="flow-arrow-wrap">
+          <div class="flow-arrow-stem"></div>
+          <button class="flow-arrow-btn" data-next-step="4" id="arrow-03" type="button" title="Advance to Step 04">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 04 ==================== -->
+      <section class="step-section step-inactive step-locked" data-step-id="4" id="step-04">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>04 GHZ KEY ACCUMULATION</span>
+        </div>
+
+        <div class="card-box" style="display: flex; flex-direction: column; align-items: center;">
+          <!-- GHZ Source Node -->
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; margin-bottom: 12px;">
+            <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-inner); border: 1px solid var(--accent-purple3); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; box-shadow: var(--shadow-glow);">
+              <span style="font-family: var(--font-sans); font-size: 18px; font-weight: 700; color: var(--text-heading);">|GHZ⟩</span>
+              <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-label);">Tripartite</span>
+            </div>
+            <span style="font-family: var(--font-mono); font-size: 14px; color: var(--text-label); margin-top: 8px;">|Ψ⟩ = (|000⟩ + |111⟩) / √2</span>
+          </div>
+
+          <!-- Small grey line above shares (Renamed requirement) -->
+          <div class="demo-mode-line">
+            Demo mode: shares visible for teaching only
+          </div>
+
+          <!-- Private Shares Distribution Grid -->
+          <div class="shares-stream-grid">
+            <!-- Alice's Key (A) -->
+            <div class="share-stream-card alice">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text-heading);">Alice's Key (A)</span>
+                <span class="version-badge">dealer</span>
+              </div>
+              <div class="share-bits-text" id="alice-key-stream">Awaiting batch simulation...</div>
+            </div>
+
+            <!-- Bob's Share (B) -->
+            <div class="share-stream-card bob">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--text-heading);">Bob's Share (B)</span>
+                <span class="version-badge">share 1/2</span>
+              </div>
+              <div class="share-bits-text" id="bob-share-stream">Awaiting batch simulation...</div>
+            </div>
+
+            <!-- Charlie's Share (C) -->
+            <div class="share-stream-card charlie">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--text-heading);">Charlie's Share (C)</span>
+                <span class="version-badge">share 2/2</span>
+              </div>
+              <div class="share-bits-text" id="charlie-share-stream">Awaiting batch simulation...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow to Step 05 -->
+        <div class="flow-arrow-wrap">
+          <div class="flow-arrow-stem"></div>
+          <button class="flow-arrow-btn" data-next-step="5" id="arrow-04" type="button" title="Advance to Step 05">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 05: SECURITY ==================== -->
+      <section class="step-section step-inactive step-locked" data-step-id="5" id="step-05">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>05 SECURITY</span>
+        </div>
+
+        <div class="card-box">
+          <!-- Step Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--border-default);">
+            <div>
+              <span style="font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; color: var(--text-label); display: block;">Quantum Bit Error Rate (QBER) Verification</span>
+              <span style="font-family: var(--font-mono); font-size: 14px; color: var(--text-secondary);">Threshold limit: &lt; 5.0% QBER</span>
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 14px; padding: 4px 12px; border-radius: 6px; background: var(--bg-inner); border: 1px solid var(--border-default); color: var(--text-heading);">
+              Sample: <strong id="sampled-rounds-count">24 rounds</strong>
+            </div>
+          </div>
+
+          <!-- Main Security Visualization Grid -->
+          <div class="security-vis-grid">
+            <!-- Left: Main Donut Chart & Sample Dots (7 cols) -->
+            <div class="security-main-panel">
+              <span style="font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; color: var(--text-label); margin-bottom: 8px;">Live Channel Measurement</span>
+
+              <!-- SVG Donut Chart (plain JS + SVG) -->
+              <div class="donut-wrap">
+                <svg width="180" height="180" viewBox="0 0 120 120" style="transform: rotate(-90deg);">
+                  <!-- Background Track Circle -->
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="var(--donut-track)" stroke-width="12"></circle>
+                  <!-- Matched Green Arc -->
+                  <circle id="donut-green" cx="60" cy="60" r="50" fill="none" stroke="var(--accent-green)" stroke-width="12" stroke-dasharray="314.159" stroke-dashoffset="0" style="transition: stroke-dashoffset 0.6s ease;"></circle>
+                  <!-- Mismatched Red Arc -->
+                  <circle id="donut-red" cx="60" cy="60" r="50" fill="none" stroke="var(--accent-red)" stroke-width="12" stroke-dasharray="314.159" stroke-dashoffset="314.159" style="transition: stroke-dashoffset 0.6s ease;"></circle>
+                  <!-- 5% Threshold Tick Mark -->
+                  <line x1="60" y1="8" x2="60" y2="22" stroke="var(--donut-tick)" stroke-width="2" stroke-dasharray="2,2"></line>
+                </svg>
+
+                <!-- Center Error % -->
+                <div class="donut-center-info">
+                  <span class="donut-center-pct" id="donut-qber-val">0.0%</span>
+                  <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-label); text-transform: uppercase;">QBER</span>
+                </div>
+              </div>
+
+              <!-- 5% threshold note -->
+              <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); margin-top: 4px; margin-bottom: 12px;">
+                Tick line at 5.0% threshold
+              </span>
+
+              <!-- Sample Rounds Dot Strip -->
+              <div class="dots-strip-container">
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; padding: 0 4px;">
+                  <span>Sampled Check Bits:</span>
+                  <span id="dot-strip-legend" style="font-weight: 700; color: var(--accent-green);">24 / 24 Matched</span>
+                </div>
+                <div class="dots-strip-wrap" id="sample-dots-row">
+                  <!-- Generated sequentially via JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Companion Reference Donuts (5 cols) -->
+            <div class="security-side-panel">
+              <!-- Companion Donut: Eve OFF -->
+              <div class="companion-card">
+                <div>
+                  <span style="font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; color: var(--text-label); display: block;">Last run: Eve OFF</span>
+                  <span style="font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--accent-green);" id="companion-eve-off-pct">0.0% QBER</span>
+                  <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); display: block;" id="companion-eve-off-note">Clean quantum channel</span>
+                </div>
+                <div class="companion-mini-donut">
+                  <svg width="58" height="58" viewBox="0 0 40 40" style="transform: rotate(-90deg);">
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="var(--donut-track)" stroke-width="5"></circle>
+                    <circle id="mini-donut-eve-off" cx="20" cy="20" r="16" fill="none" stroke="var(--accent-green)" stroke-width="5" stroke-dasharray="100.53" stroke-dashoffset="0"></circle>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Companion Donut: Eve ON -->
+              <div class="companion-card">
+                <div>
+                  <span style="font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; color: var(--text-label); display: block;">Last run: Eve ON</span>
+                  <span style="font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--accent-red);" id="companion-eve-on-pct">no run yet</span>
+                  <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); display: block;" id="companion-eve-on-note">no run yet</span>
+                </div>
+                <div class="companion-mini-donut">
+                  <svg width="58" height="58" viewBox="0 0 40 40" style="transform: rotate(-90deg);">
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="var(--donut-track)" stroke-width="5"></circle>
+                    <circle id="mini-donut-eve-on-green" cx="20" cy="20" r="16" fill="none" stroke="var(--accent-green)" stroke-width="5" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle>
+                    <circle id="mini-donut-eve-on-red" cx="20" cy="20" r="16" fill="none" stroke="var(--accent-red)" stroke-width="5" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- What Eve Sees (Two-column minimal text, no box) -->
+              <div class="eve-intercept-profile">
+                <span style="font-size: 12px; text-transform: uppercase; color: var(--text-secondary); display: block;">Channel Intercept Profile</span>
+                <div class="eve-profile-grid">
+                  <div>
+                    <div class="eve-can-see">
+                      <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent-red); display: inline-block;"></span>
+                      <span>Eve can see:</span>
+                    </div>
+                    <div class="eve-profile-sub">bases, ciphertext</div>
+                  </div>
+                  <div>
+                    <div class="eve-cannot-see">
+                      <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent-green); display: inline-block;"></span>
+                      <span>Eve cannot see:</span>
+                    </div>
+                    <div class="eve-profile-sub">bits A, B, C</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Big Prominent Status Line Under Chart -->
+          <div class="security-status-line secure" id="big-security-status">
+            <span>Secure, no eavesdropper</span>
+          </div>
+
+          <!-- On Secure: Proceed to Encrypt button -->
+          <div id="secure-action-wrap" style="display: flex; justify-content: center; margin-top: 16px;">
+            <button class="btn-primary" id="btn-proceed-encrypt" type="button">
+              <span>Proceed to Encrypt (Step 06)</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- On Attack: Rerun and Reset buttons -->
+          <div id="attack-action-wrap" style="display: none; justify-content: center; gap: 14px; margin-top: 16px;">
+            <button class="btn-primary" id="btn-rerun-batch" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              <span>Rerun Batch</span>
+            </button>
+            <button class="btn-secondary" id="btn-attack-reset" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+              <span>Reset</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Arrow to Step 06 -->
+        <div class="flow-arrow-wrap">
+          <div class="flow-arrow-stem"></div>
+          <button class="flow-arrow-btn" data-next-step="6" id="arrow-05" type="button" title="Advance to Step 06">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 06: ENCRYPT ==================== -->
+      <section class="step-section step-inactive step-locked" data-step-id="6" id="step-06">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>06 ENCRYPT</span>
+        </div>
+
+        <div class="card-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-default);">
+            <span style="font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; color: var(--text-label);">Vernam One-Time Pad Equation</span>
+            <span class="version-badge" style="background: var(--accent-purple1); border-color: var(--accent-purple3); color: var(--text-heading); font-weight: 700;">C = P ⊕ A</span>
+          </div>
+
+          <!-- Equations with ≥ 18px font for readability -->
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="equation-row">
+              <span class="equation-label">Plaintext (P):</span>
+              <span class="equation-bits" id="enc-p">-</span>
+            </div>
+            <div class="equation-row">
+              <span class="equation-label" style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--accent-purple4);">⊕</span>
+                <span>Alice's Key (A):</span>
+              </span>
+              <span class="equation-bits" id="enc-a">-</span>
+            </div>
+            <div class="equation-row" style="border-color: var(--accent-purple3);">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="equation-label" style="color: var(--text-heading); font-weight: 700;">Ciphertext (C):</span>
+                <span class="version-badge" style="background: var(--accent-purple1); font-size: 10px;">public</span>
+              </div>
+              <span class="equation-bits highlight" id="enc-c">-</span>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px;">
+            <button class="btn-primary" id="btn-encrypt-action" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              <span>Encrypt Message</span>
+            </button>
+            <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); font-style: italic;">
+              * Plaintext is purged from server memory upon encryption.
+            </span>
+          </div>
+        </div>
+
+        <!-- Arrow to Step 07 -->
+        <div class="flow-arrow-wrap">
+          <div class="flow-arrow-stem"></div>
+          <button class="flow-arrow-btn" data-next-step="7" id="arrow-06" type="button" title="Advance to Step 07">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 07: COMBINE ==================== -->
+      <section class="step-section step-inactive step-locked" data-step-id="7" id="step-07">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>07 COMBINE (SHARE SYNTHESIS)</span>
+        </div>
+
+        <div class="card-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; color: var(--text-label);">Collaborative Share Synthesis (B ⊕ C = A)</span>
+            <div style="display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; background: var(--accent-green-bg); border: 1px solid var(--accent-green-border); font-family: var(--font-mono); font-size: 12px; color: var(--accent-green); font-weight: 700;">
+              <span>Matches Alice's Key A</span>
+              <span>✓</span>
+            </div>
+          </div>
+
+          <!-- Demo Mode Note -->
+          <div class="demo-mode-line">
+            Demo mode: shares visible for teaching only
+          </div>
+
+          <!-- Equation Rows ≥ 18px -->
+          <div style="background: var(--bg-inner); border: 1px solid var(--border-default); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+            <div class="equation-row" style="background: transparent; border: none; padding: 0;">
+              <span class="equation-label">Bob's Share (B):</span>
+              <span class="equation-bits" id="comb-b">-</span>
+            </div>
+            <div style="text-align: center; color: var(--accent-purple4); font-size: 18px; font-weight: 700;">⊕</div>
+            <div class="equation-row" style="background: transparent; border: none; padding: 0;">
+              <span class="equation-label">Charlie's Share (C):</span>
+              <span class="equation-bits" id="comb-c">-</span>
+            </div>
+            <div style="height: 1px; background: var(--border-default); width: 100%; margin: 4px 0;"></div>
+            <div class="equation-row" style="background: transparent; border: none; padding: 0;">
+              <span class="equation-label" style="color: var(--text-heading); font-weight: 700;">Key (B ⊕ C):</span>
+              <span class="equation-bits highlight" id="comb-res">-</span>
+            </div>
+          </div>
+
+          <!-- Bob & Charlie Alone Fail Simulation Cards (renamed: Random noise) -->
+          <div class="solo-actions-grid">
+            <button class="solo-card-btn" id="btn-bob-alone" type="button">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 14px; font-weight: 700; color: var(--text-heading);">Bob alone</span>
+                <span style="font-family: var(--font-mono); font-size: 12px; color: var(--accent-red); font-weight: 700; text-transform: uppercase;">Fail: Random noise</span>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); margin-top: 6px; word-break: break-all;" id="bob-solo-state">
+                click to simulate isolated decode
+              </div>
+            </button>
+
+            <button class="solo-card-btn" id="btn-charlie-alone" type="button">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 14px; font-weight: 700; color: var(--text-heading);">Charlie alone</span>
+                <span style="font-family: var(--font-mono); font-size: 12px; color: var(--accent-red); font-weight: 700; text-transform: uppercase;">Fail: Random noise</span>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); margin-top: 6px; word-break: break-all;" id="charlie-solo-state">
+                click to simulate isolated decode
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Arrow to Step 08 -->
+        <div class="flow-arrow-wrap">
+          <div class="flow-arrow-stem"></div>
+          <button class="flow-arrow-btn" data-next-step="8" id="arrow-07" type="button" title="Advance to Step 08">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 08: DECRYPT ==================== -->
+      <section class="step-section step-inactive step-locked" data-step-id="8" id="step-08">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>08 DECRYPT</span>
+        </div>
+
+        <div class="card-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-default);">
+            <span style="font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; color: var(--text-label);">Inverse Vernam Key Reconstruction</span>
+            <span class="version-badge" style="background: var(--accent-purple1); border-color: var(--accent-purple3); color: var(--text-heading); font-weight: 700;">P' = C ⊕ (B ⊕ C)</span>
+          </div>
+
+          <!-- Equations with ≥ 18px font -->
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="equation-row">
+              <span class="equation-label">Ciphertext (C):</span>
+              <span class="equation-bits" id="dec-c">-</span>
+            </div>
+            <div class="equation-row">
+              <span class="equation-label" style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--accent-purple4);">⊕</span>
+                <span>(B ⊕ C):</span>
+              </span>
+              <span class="equation-bits" id="dec-key">-</span>
+            </div>
+            <div class="equation-row" style="border-color: var(--accent-purple3);">
+              <span class="equation-label" style="color: var(--text-heading); font-weight: 700;">Plaintext (P'):</span>
+              <span class="equation-bits highlight" id="dec-p">-</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 18px;">
+            <button class="btn-primary" id="btn-decrypt-action" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+              <span>Decrypt Message</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Arrow to Step 09 -->
+        <div class="flow-arrow-wrap">
+          <div class="flow-arrow-stem"></div>
+          <button class="flow-arrow-btn" data-next-step="9" id="arrow-08" type="button" title="Advance to Step 09">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 09: RESULT ==================== -->
+      <section class="step-section step-inactive step-locked" data-step-id="9" id="step-09">
+        <div class="step-badge">
+          <span class="pulse-dot"></span>
+          <span>09 DECRYPTED RESULT</span>
+        </div>
+
+        <div class="result-card-large">
+          <span style="font-family: var(--font-mono); font-size: 13px; color: var(--text-label); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Decrypted Payload</span>
+          <!-- Projector-Readable Massive Output (48px - 56px bold) -->
+          <div class="result-glow-text" id="final-result-string">CAT123</div>
+          <div class="status-chip-success" id="result-status-tag">
+            <span>matches original plaintext bit-for-bit ✓</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; width: 100%; border-top: 1px solid var(--border-default); margin-top: 24px; padding-top: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);">
+            <span>Backend: Qiskit Aer</span>
+            <span id="final-latency">Execution Latency: 12.8ms</span>
+            <span>State: |GHZ₃⟩ Ideal</span>
+          </div>
+
+          <button class="btn-primary" id="btn-new-message" type="button" style="margin-top: 20px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>New Message (Reset)</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      Simulation using Qiskit, no real photons.
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
